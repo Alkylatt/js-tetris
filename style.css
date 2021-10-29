@@ -1,0 +1,23 @@
+#gridsContainer {
+    margin: auto;
+    width: 400px;
+    height: 800px;
+    background-color: dimgray;
+    box-shadow: inset 0 0 1em #333;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.grid {
+    border: 1px solid #333;
+    width: 38px;
+    height: 38px;
+}
+
+.colorZ { background-color: rgb(212, 93, 85); }
+.colorS { background-color: rgb(113, 212, 85); }
+.colorL { background-color: rgb(212, 155, 85); }
+.colorJ { background-color: rgb(85, 117, 212); }
+.colorI { background-color: rgb(85, 212, 193); }
+.colorT { background-color: rgb(178, 85, 212); }
+.colorO { background-color: rgb(212, 206, 85); }
