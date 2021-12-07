@@ -5,6 +5,7 @@ window.addEventListener("keydown", function (event) {
 
     switch (event.key) {
         case "ArrowDown":
+            moveDown()
             console.log("down");
             break;
         case "ArrowUp":
@@ -31,6 +32,7 @@ window.addEventListener("keydown", function (event) {
             console.log("C");
             break;
         case "a":
+            rotate_180();
             console.log("A");
             break;
         default:
@@ -47,8 +49,8 @@ window.addEventListener("keydown", function (event) {
 
 
 
-let gameSpace = ['empty'];
-while(gameSpace.length < 200) { gameSpace.push('empty'); }
+let gameSpace = [''];
+while(gameSpace.length < 200) { gameSpace.push(''); }
 console.log(gameSpace);
 
 
@@ -115,43 +117,163 @@ function clearCurrentRender() {
 }
 
 function rotate_cw() {
+    let rotationNext = rotation;
+    if(rotation < 3) rotationNext++;
+    else rotationNext = 0;
+
+    // I'll ignore the fact that rotating can clip the piece through the wall for now
+    // I'll fix it later
+
+    // Checks for pre-existing blocks and prevents clipping
+    for(let i=0;i < 4;i++) {
+        if(gameSpace[currentPiece[rotationNext][i] + verticalPosition + horizontalPosition] !== "") {
+            let isClipping = true;
+            // if the block in check is the piece itself, then it's not clipping
+            for (let j = 0; j < 4; j++) {
+                if ((currentPiece[rotationNext][i]) === currentPiece[rotation][j]) {
+                    isClipping = false;
+                    break;
+                }
+            }
+            if (isClipping) return; // if the piece will be clipping after movement
+        }
+    }
+
+    // all clear, move the piece
     clearCurrentRender();
-    if(rotation < 3) rotation++;
-    else rotation = 0;
+    rotation = rotationNext;
 }
 function rotate_ccw() {
+    let rotationNext = rotation;
+    if(rotation > 0) rotationNext--;
+    else rotationNext = 3;
+
+    // I'll ignore the fact that rotating can clip the piece through the wall for now
+    // I'll fix it later
+
+    // Checks for pre-existing blocks and prevents clipping
+    for(let i=0;i < 4;i++) {
+        if(gameSpace[currentPiece[rotationNext][i] + verticalPosition + horizontalPosition] !== "") {
+            let isClipping = true;
+            // if the block in check is the piece itself, then it's not clipping
+            for (let j = 0; j < 4; j++) {
+                if ((currentPiece[rotationNext][i]) === currentPiece[rotation][j]) {
+                    isClipping = false;
+                    break;
+                }
+            }
+            if (isClipping) return; // if the piece will be clipping after movement
+        }
+    }
+
     clearCurrentRender();
-    if(rotation > 0) rotation--;
-    else rotation = 3;
+    rotation = rotationNext;
+}
+function rotate_180() {
+    let rotationNext = (rotation + 2) % 4;
+
+    // I'll ignore the fact that rotating can clip the piece through the wall for now
+    // I'll fix it later
+
+    // Checks for pre-existing blocks and prevents clipping
+    for(let i=0;i < 4;i++) {
+        if(gameSpace[currentPiece[rotationNext][i] + verticalPosition + horizontalPosition] !== "") {
+            let isClipping = true;
+            // if the block in check is the piece itself, then it's not clipping
+            for (let j = 0; j < 4; j++) {
+                if ((currentPiece[rotationNext][i]) === currentPiece[rotation][j]) {
+                    isClipping = false;
+                    break;
+                }
+            }
+            if (isClipping) return; // if the piece will be clipping after movement
+        }
+    }
+
+    clearCurrentRender();
+    rotation = rotationNext;
 }
 function move_left() {
+    //stop move_left if any block of the piece is at the left border
     for(let i=0;i < 4;i++) {
         let x = (currentPiece[rotation][i] + horizontalPosition).toString();
-        if(x[x.length - 1] === '0') { return; } //stop move_left if any block of the piece is at the left border
+        if(x[x.length - 1] === '0') { return; }
     }
+    // Checks for pre-existing blocks and prevents clipping
+    for(let i=0;i < 4;i++) {
+        if(gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition-1] !== "") {
+            let isClipping = true;
+            // if the block in check is the piece itself, then it's not clipping
+            for (let j = 0; j < 4; j++) {
+                if ((currentPiece[rotation][i] - 1) === currentPiece[rotation][j]) {
+                    isClipping = false;
+                    break;
+                }
+            }
+            if (isClipping) return; // if the piece will be clipping after movement
+        }
+    }
+
+    // all clear, move the piece
     for(let i=0;i < 4;i++) { gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition] = ""; }
     horizontalPosition--;
 }
 function move_right() {
+    //stop move_right if any block of the piece is at the right border
     for(let i=0;i < 4;i++) {
         let x = (currentPiece[rotation][i] + horizontalPosition).toString();
-        if(x[x.length - 1] === '9') { return; } //stop move_right if any block of the piece is at the right border
+        if(x[x.length - 1] === '9') { return; }
     }
+    // Checks for pre-existing blocks and prevents clipping
+    for(let i=0;i < 4;i++) {
+        if(gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition+1] !== "") {
+            let isClipping = true;
+            // if the block in check is the piece itself, then it's not clipping
+            for(let j=0;j < 4;j++) {
+                if( (currentPiece[rotation][i] + 1) === currentPiece[rotation][j] ) {
+                    isClipping = false;
+                    break;
+                }
+            }
+            if (isClipping) return; // if the piece will be clipping after movement
+        }
+    }
+
+    // all clear, move the piece
     for(let i=0;i < 4;i++) { gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition] = ""; }
     horizontalPosition++;
 }
 
 function moveDown() {
+    // at-the-bottom detection
     for(let i=0;i < 4;i++) {
         let nextNo = Number(currentPiece[rotation][i] + verticalPosition + horizontalPosition + 10);
         if(nextNo > 199) { return false; } //stop function if any of the piece will go out of range
     }
+    // collision detection
+    for(let i=0;i < 4;i++) {
+        if(gameSpace[currentPiece[rotation][i] + verticalPosition+10 + horizontalPosition] !== "") {
+            let isClipping = true;
+            // if the block in check is the piece itself, then it's not clipping
+            for(let j=0;j < 4;j++) {
+                if( (currentPiece[rotation][i] + 10) === currentPiece[rotation][j] ) {
+                    isClipping = false;
+                    break;
+                }
+            }
+            if (isClipping) { return false }; // if the piece will be clipping after movement
+        }
+    }
+
     clearCurrentRender();
     verticalPosition += 10;
     return true;
 }
 function hardDrop() {
     while(moveDown()) {}
+
+    update();
+    spawnPiece();
 }
 
 
@@ -197,7 +319,7 @@ function spawnPiece() {
     horizontalPosition = 3;
     verticalPosition = -10;
     rotation = 0;
-    setCurrentPiece("Z")
+    setCurrentPiece("L")
 }
 
 
