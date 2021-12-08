@@ -1,3 +1,4 @@
+/* old key press detector
 window.addEventListener("keydown", function (event) {
     if (event.defaultPrevented) {
         return; // Do nothing if the event was already processed
@@ -44,21 +45,23 @@ window.addEventListener("keydown", function (event) {
 }, true);
 // the last option dispatches the event to the listener first,
 // then dispatches event to window
+*/
 
 
 
 
-
+// initialize internal game grid array
 let gameSpace = [''];
-while(gameSpace.length < 200) { gameSpace.push(''); }
+while(gameSpace.length < 220) { gameSpace.push(''); }
 console.log(gameSpace);
 
 
 
-
-
+// initialize game grid on html page
 const gridsContainer = document.querySelector('#gridsContainer')
-for(let i=0;i < 200;i++) {
+// 2 extra out-of-bound lines for piece to spawn in,
+// 20 real lines for gameplay
+for(let i=0;i < 220;i++) {
     let newDiv = gridsContainer.appendChild(document.createElement("div"));
     newDiv.classList.add("grid");
 }
@@ -74,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 function render() {
-    for(let i=0; i < 200 ;i++) {
+    for(let i=0; i < 220 ;i++) {
         switch(gameSpace[i]) {
             case "z":
                 grids[i].className = "grid colorZ";
@@ -98,10 +101,26 @@ function render() {
                 grids[i].className = "grid colorO";
                 break;
             default:
-                grids[i].className = "grid";
+                if(i < 20) {
+                    grids[i].className = "grid gridSpawn";
+                }else {
+                    grids[i].className = "grid";
+                }
                 break;
         }
     }
+}
+
+
+
+// initial the first bag
+let pieceBag = ['Z', 'S', 'L', 'J', 'I', 'T', 'O'];
+shuffle(pieceBag);
+// The 7-bag piece generator
+function generateBag() {
+    let tempBag = ['Z', 'S', 'L', 'J', 'I', 'T', 'O'];
+    shuffle(tempBag);
+    pieceBag = tempBag.concat(pieceBag);
 }
 
 
@@ -247,8 +266,9 @@ function move_right() {
 function moveDown() {
     // at-the-bottom detection
     for(let i=0;i < 4;i++) {
-        let nextNo = Number(currentPiece[rotation][i] + verticalPosition + horizontalPosition + 10);
-        if(nextNo > 199) { return false; } //stop function if any of the piece will go out of range
+        if( (currentPiece[rotation][i] + verticalPosition + horizontalPosition) > 209) {
+            return false; // if any part of the piece is already at the bottom
+        }
     }
     // collision detection
     for(let i=0;i < 4;i++) {
@@ -261,7 +281,7 @@ function moveDown() {
                     break;
                 }
             }
-            if (isClipping) { return false }; // if the piece will be clipping after movement
+            if (isClipping) { return false } // if the piece will be clipping after movement
         }
     }
 
@@ -316,10 +336,25 @@ function setCurrentPiece(input) {
 }
 
 function spawnPiece() {
+    console.log("spawnPiece called, pieceBag: " + pieceBag);
+    if(pieceBag.length < 7) {
+        generateBag();
+    }
+
     horizontalPosition = 3;
-    verticalPosition = -10;
+    verticalPosition = 0;
     rotation = 0;
-    setCurrentPiece("L")
+    setCurrentPiece(pieceBag.pop());
+
+
+    // collision detection
+    for(let i=0;i < 4;i++) {
+        if(gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition] !== "") {
+            // if spawn is blocked
+            clearInterval(intervalTick);
+            document.getElementById("gameOverPopup").style.display = "block";
+        }
+    }
 }
 
 
@@ -329,33 +364,160 @@ let verticalPosition = -10; // always 10's multiple
 
 
 
+// This updates the grid class and thus game board color
 function update() {
     for(let i=0;i < 4;i++) { gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition] = ""; }
     for(let i=0;i < 4;i++) { gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition] = currentColor; }
-
-    if(verticalPosition >= 180) spawnPiece();
-    //if(verticalPosition >= 180) clearInterval(intervalID);
 }
 
 
 let lastUpdate = Date.now();
-let intervalID = setInterval(tick, 0);
-let delay = 0;
+let intervalTick = setInterval(tick, 16.6); // about 60 fps
 
+let gravity = 1000; // move down every ? ms
+let gravityTimer = 0;
+
+let das = 8; // [frames]
+let dasTimer = das;
+
+let arr = 0; // [frames]
+let arrTimer = arr;
+
+let hardDropCd = false; // to prevent unintended hard-drop spam
+// rotate cool-downs
+let cwCd = false;
+let ccwCd = false;
+let r180Cd = false;
 
 spawnPiece();
 
 function tick() {
-    let now = Date.now();
+    let now = Date.now(); // [ms]
     let dt = now - lastUpdate;
     lastUpdate = now;
-    delay += dt;
+    gravityTimer -= dt;
 
-    if(delay >= 500) {
+
+    if(gravityTimer < 0) {
         moveDown();
-        delay = 0;
+        gravityTimer += gravity;
     }
+
+
+    if(keyMap["ArrowDown"]) {
+        moveDown();
+    }
+
+
+    // L/R movement
+    if(keyMap["ArrowLeft"] && !keyMap["ArrowRight"]) {
+        if(dasTimer === das) {
+            move_left();
+            dasTimer--;
+        }else if(dasTimer > 0) {
+            dasTimer--;
+        }else {
+            if (arr === 0) { // if arr is 0 frames then teleport the piece to the border
+                for(let i=0;i < 9;i++) {
+                    move_left();
+                }
+            } else { // if arr is not 0, then use the arrTimer
+                if (arrTimer <= 0) {
+                    move_left();
+                    arrTimer = arr;
+                } else {
+                    arrTimer--;
+                }
+            }
+        }
+    }
+    if(keyMap["ArrowRight"] && !keyMap["ArrowLeft"]) {
+        if(dasTimer === das) {
+            move_right();
+            dasTimer--;
+        }else if(dasTimer > 0) {
+            dasTimer--;
+        }else {
+            if (arr === 0) { // if arr is 0 frames then teleport the piece to the border
+                for(let i=0;i < 9;i++) {
+                    move_right();
+                }
+            } else { // if arr is not 0, then use the arrTimer
+                if (arrTimer <= 0) {
+                    move_right();
+                    arrTimer = arr;
+                } else {
+                    arrTimer--;
+                }
+            }
+        }
+    }
+    if(!keyMap["ArrowLeft"] && !keyMap["ArrowRight"] && dasTimer !== das) {
+        dasTimer = das;
+    }
+
+    if(keyMap[" "]) {
+        if(!hardDropCd) hardDrop();
+        hardDropCd = true; // this stops unintended hard-drop spam every frame
+    }else {
+        hardDropCd = false;
+    }
+
+    if(keyMap["ArrowUp"]) {
+        if(!cwCd) rotate_cw();
+        cwCd = true;
+    }else {
+        cwCd = false;
+    }
+    if(keyMap["z"]) {
+        if(!ccwCd) rotate_ccw();
+        ccwCd = true;
+    }else {
+        ccwCd = false;
+    }
+    if(keyMap["a"]) {
+        if(!r180Cd) rotate_180();
+        r180Cd = true;
+    }else {
+        r180Cd = false;
+    }
+
+    if(keyMap["c"]) {
+        console.log("C");
+    }
+
+
 
     update();
     render();
+}
+
+
+// Key press detector
+let keyMap = {}; // a array for keys' stats
+onkeydown = onkeyup = function(e){
+    e = e || event; // to deal with IE
+    keyMap[e.key] = e.type === "keydown";
+}
+
+
+
+// The de-facto unbiased shuffle algorithm is the Fisher-Yates (aka Knuth) Shuffle.
+// See https://github.com/coolaj86/knuth-shuffle
+function shuffle(array) {
+    let currentIndex = array.length,  randomIndex;
+
+    // While there remain elements to shuffle...
+    while (currentIndex !== 0) {
+
+        // Pick a remaining element...
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+
+        // And swap it with the current element.
+        [array[currentIndex], array[randomIndex]] = [
+            array[randomIndex], array[currentIndex]];
+    }
+
+    return array;
 }
