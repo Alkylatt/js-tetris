@@ -40,3 +40,15 @@
     height: 200px;
     background-color: rgba(0,0,0, 0.5);
 }
+
+.ui_left {
+    position: absolute;
+    right: 0;
+    top: 10%;
+    height: 80%;
+    padding-top: 32px;
+    padding-right: 64px;
+
+    color: white;
+    font-size: 24px;
+}

@@ -1,55 +1,3 @@
-/* old key press detector
-window.addEventListener("keydown", function (event) {
-    if (event.defaultPrevented) {
-        return; // Do nothing if the event was already processed
-    }
-
-    switch (event.key) {
-        case "ArrowDown":
-            moveDown()
-            console.log("down");
-            break;
-        case "ArrowUp":
-            rotate_cw();
-            console.log("up");
-            break;
-        case "ArrowLeft":
-            move_left();
-            console.log("left");
-            break;
-        case "ArrowRight":
-            move_right();
-            console.log("right");
-            break;
-        case " ":
-            hardDrop();
-            console.log("space");
-            break;
-        case "z":
-            rotate_ccw();
-            console.log("Z");
-            break;
-        case "c":
-            console.log("C");
-            break;
-        case "a":
-            rotate_180();
-            console.log("A");
-            break;
-        default:
-            return; // Quit when this doesn't handle the key event.
-    }
-
-    // Cancel the default action to avoid it being handled twice
-    event.preventDefault();
-}, true);
-// the last option dispatches the event to the listener first,
-// then dispatches event to window
-*/
-
-
-
-
 // initialize internal game grid array
 let gameSpace = [''];
 while(gameSpace.length < 220) { gameSpace.push(''); }
@@ -57,8 +5,13 @@ console.log(gameSpace);
 
 
 
+// get elements on html page
+let counter_lineCleared = 0;
+const ui_lineCleared = document.querySelector('#ui_lineCleared');
+ui_lineCleared.innerHTML = "0";
+
 // initialize game grid on html page
-const gridsContainer = document.querySelector('#gridsContainer')
+const gridsContainer = document.querySelector('#gridsContainer');
 // 2 extra out-of-bound lines for piece to spawn in,
 // 20 real lines for gameplay
 for(let i=0;i < 220;i++) {
@@ -73,6 +26,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+function lineClear() {
+    let linesToClear = [];
+    // check for lines cleared from bottom to top
+    for(let i=21;i >= 0;i--) {
+        let clear = true;
+        for(let j=i*10;j < i*10+10;j++) {
+            if(gameSpace[j] === "") {
+                clear = false;
+                break;
+            }
+        }
+        if(clear) {
+            linesToClear[linesToClear.length] = i;
+        }
+    }
+
+    console.log(linesToClear);
+    // go through every element in linesToClear
+    for(let i=0;i < linesToClear.length;i++) {
+        console.log(i);
+        // clear the line
+        for(let j=linesToClear[i]*10 + 10*i;j < linesToClear[i]*10 + 10*i + 10;j++) {
+            gameSpace[j] = "";
+        }
+        // move everything above down 1 tile
+
+        for(let j = linesToClear[i]*10 + 10*i - 1;j >= 0;j--) {
+            gameSpace[j+10] = gameSpace[j];
+            gameSpace[j] = "";
+        }
+    }
+
+    // update line clear counter
+    counter_lineCleared += linesToClear.length;
+    ui_lineCleared.innerHTML = counter_lineCleared.toString();
+}
 
 
 
@@ -135,14 +124,7 @@ function clearCurrentRender() {
     for(let i=0;i < 4;i++) { gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition] = ""; }
 }
 
-function rotate_cw() {
-    let rotationNext = rotation;
-    if(rotation < 3) rotationNext++;
-    else rotationNext = 0;
-
-    // I'll ignore the fact that rotating can clip the piece through the wall for now
-    // I'll fix it later
-
+function checkRotateCollision(rotationNext) {
     // Checks for pre-existing blocks and prevents clipping
     for(let i=0;i < 4;i++) {
         if(gameSpace[currentPiece[rotationNext][i] + verticalPosition + horizontalPosition] !== "") {
@@ -154,8 +136,180 @@ function rotate_cw() {
                     break;
                 }
             }
-            if (isClipping) return; // if the piece will be clipping after movement
+            if (isClipping) return true; // if the piece will be clipping after movement
         }
+    }
+
+    // check if the piece is at 0 and 9 simultaneously, then it's clipping
+    let checkPos = [];
+    for (let i = 0; i < 4; i++) {
+        checkPos[i] = (currentPiece[rotationNext][i] + verticalPosition + horizontalPosition) % 10;
+    }
+    for (let i = 0; i < 4; i++) {
+        if(checkPos[i] === 0) {
+            for (let j = 0; j < 4; j++) {
+                if(checkPos[j] === 9) {
+                    return true; // is clipping
+                }
+            }
+            break;
+        }
+    }
+    // return false if no collision happens
+    return false;
+}
+
+function checkMoveCollision(nextPos) {
+    // check for corner clipping
+    for (let i = 0; i < 4; i++) {
+        if(nextPos[i] < 0 || nextPos[i] > 219) {
+            return true; // is clipping at the left-top or right-bottom corner
+        }
+    }
+
+    // Checks for pre-existing blocks and prevents clipping
+    for(let i=0;i < 4;i++) {
+        if(gameSpace[nextPos[i]] !== "") {
+            let isClipping = true;
+            // if the block in check is the piece itself, then it's not clipping
+            for (let j = 0; j < 4; j++) {
+                if (nextPos[i] === currentPiece[rotation][j] + horizontalPosition + verticalPosition) {
+                    isClipping = false;
+                    break;
+                }
+            }
+            if (isClipping) return true; // if the piece will be clipping after movement
+        }
+    }
+
+    // check if the piece is at 0 and 9 simultaneously, then it's clipping
+    let checkPos = [];
+    for (let i = 0; i < 8; i++) {
+        if (i < 4) checkPos[i] = nextPos[i] % 10;
+        else checkPos[i] = (currentPiece[rotation][i-4] + horizontalPosition + verticalPosition) % 10;
+    }
+    for (let i = 0; i < 8; i++) {
+        if(checkPos[i] === 0) {
+            for (let j = 0; j < 8; j++) {
+                if(checkPos[j] === 9) {
+                    return true; // is clipping
+                }
+            }
+            break;
+        }
+    }
+
+    // return false if no collision happens
+    return false;
+}
+
+const srsTable = [
+    // J, L, T, S, Z, (and O maybe)
+    [-1, -11, 20, 19], // 0-1
+    [1, 11, -20, -19], // 1-0
+    [1, 11, -20, -19], // 1-2
+    [-1, -11, 20, 19], // 2-1
+    [1, -9, 20, 21], // 2-3
+    [-1, 9, -20, -21], // 3-2
+    [-1, 9, -20, -21], // 3-0
+    [1, -9, 20, 21], // 0-3
+    // just for I :)
+    [-2, 1, 8, -19], // 0-1
+    [2, -1, -8, 19], // 1-0
+    [-1, 2, -21, 12], // 1-2
+    [1, -2, 21, -12], // 2-1
+    [2, -1, -8, 19], // 2-3
+    [-2, 1, 8, -19], // 3-2
+    [1, -2, 21, -12], // 3-0
+    [-1, 2, -21, 12] // 0-3
+];
+// This is where the SRS kicks happens
+function srsKick(nextRotation) {
+    let tryTable = [0, 0, 0, 0];
+    if(rotation === 0) {
+        if(nextRotation === 1) {
+            // 0 -> R
+            if(currentPiece === 'I') tryTable = srsTable[8];
+            else tryTable = srsTable[0];
+        }else if(nextRotation === 3) {
+            // 0 -> L
+            if(currentPiece === 'I') tryTable = srsTable[15];
+            else tryTable = srsTable[7];
+        }else {
+            // 0 -> 2
+        }
+    }else if(rotation === 1) {
+        if(nextRotation === 2) {
+            // R -> 2
+            if(currentPiece === 'I') tryTable = srsTable[10];
+            else tryTable = srsTable[2];
+        }else if(nextRotation === 0) {
+            // R -> 0
+            if(currentPiece === 'I') tryTable = srsTable[9];
+            else tryTable = srsTable[1];
+        }else {
+            // R -> L
+        }
+    }
+    else if(rotation === 2) {
+        if(nextRotation === 3) {
+            // 2 -> L
+            if(currentPiece === 'I') tryTable = srsTable[12];
+            else tryTable = srsTable[4];
+        }else if(nextRotation === 1) {
+            // 2 -> R
+            if(currentPiece === 'I') tryTable = srsTable[11];
+            else tryTable = srsTable[3];
+        }else {
+            // 2 -> 0
+        }
+    }
+    else if(rotation === 3) {
+        if(nextRotation === 2) {
+            // L -> 2
+            if(currentPiece === 'I') tryTable = srsTable[13];
+            else tryTable = srsTable[5];
+        }else if(nextRotation === 0) {
+            // L -> 0
+            if(currentPiece === 'I') tryTable = srsTable[14];
+            else tryTable = srsTable[6];
+        }else {
+            // L -> R
+        }
+    }
+
+    let nextPos = [[], [], [], []];
+    let nextCoordinate = []; // this is only useful when kick is successful
+    for(let i=0;i < 4;i++) {
+        nextCoordinate[i] = tryTable[i] + verticalPosition + horizontalPosition;
+        for(let j=0;j < 4;j++) {
+            nextPos[i][j] = nextCoordinate[i] + currentPiece[nextRotation][j];
+        }
+    }
+    for(let test=0;test < 4;test++) {
+        if(!checkMoveCollision(nextPos[test])) {
+            // move the piece
+            clearCurrentRender();
+            rotation = nextRotation;
+            verticalPosition = Math.floor(nextCoordinate[test] / 10) * 10;
+            horizontalPosition = nextCoordinate[test] % 10;
+            console.log("kick");
+
+            return true; // if the kick succeeded, then move the piece, and return true
+        }
+    }
+
+    return false; // if all 4 tests failed, don't move the piece and return false
+}
+
+function rotate_cw() {
+    let rotationNext = rotation;
+    if(rotation < 3) rotationNext++;
+    else rotationNext = 0;
+
+    if(checkRotateCollision(rotationNext)) {
+        srsKick(rotationNext);
+        return;
     }
 
     // all clear, move the piece
@@ -167,22 +321,9 @@ function rotate_ccw() {
     if(rotation > 0) rotationNext--;
     else rotationNext = 3;
 
-    // I'll ignore the fact that rotating can clip the piece through the wall for now
-    // I'll fix it later
-
-    // Checks for pre-existing blocks and prevents clipping
-    for(let i=0;i < 4;i++) {
-        if(gameSpace[currentPiece[rotationNext][i] + verticalPosition + horizontalPosition] !== "") {
-            let isClipping = true;
-            // if the block in check is the piece itself, then it's not clipping
-            for (let j = 0; j < 4; j++) {
-                if ((currentPiece[rotationNext][i]) === currentPiece[rotation][j]) {
-                    isClipping = false;
-                    break;
-                }
-            }
-            if (isClipping) return; // if the piece will be clipping after movement
-        }
+    if(checkRotateCollision(rotationNext)) {
+        srsKick(rotationNext);
+        return;
     }
 
     clearCurrentRender();
@@ -191,46 +332,20 @@ function rotate_ccw() {
 function rotate_180() {
     let rotationNext = (rotation + 2) % 4;
 
-    // I'll ignore the fact that rotating can clip the piece through the wall for now
-    // I'll fix it later
-
-    // Checks for pre-existing blocks and prevents clipping
-    for(let i=0;i < 4;i++) {
-        if(gameSpace[currentPiece[rotationNext][i] + verticalPosition + horizontalPosition] !== "") {
-            let isClipping = true;
-            // if the block in check is the piece itself, then it's not clipping
-            for (let j = 0; j < 4; j++) {
-                if ((currentPiece[rotationNext][i]) === currentPiece[rotation][j]) {
-                    isClipping = false;
-                    break;
-                }
-            }
-            if (isClipping) return; // if the piece will be clipping after movement
-        }
+    if(checkRotateCollision(rotationNext)) {
+        return;
     }
 
     clearCurrentRender();
     rotation = rotationNext;
 }
 function move_left() {
-    //stop move_left if any block of the piece is at the left border
+    let nextPos = [];
     for(let i=0;i < 4;i++) {
-        let x = (currentPiece[rotation][i] + horizontalPosition).toString();
-        if(x[x.length - 1] === '0') { return; }
+        nextPos[i] = currentPiece[rotation][i] + verticalPosition + horizontalPosition - 1;
     }
-    // Checks for pre-existing blocks and prevents clipping
-    for(let i=0;i < 4;i++) {
-        if(gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition-1] !== "") {
-            let isClipping = true;
-            // if the block in check is the piece itself, then it's not clipping
-            for (let j = 0; j < 4; j++) {
-                if ((currentPiece[rotation][i] - 1) === currentPiece[rotation][j]) {
-                    isClipping = false;
-                    break;
-                }
-            }
-            if (isClipping) return; // if the piece will be clipping after movement
-        }
+    if(checkMoveCollision(nextPos)) {
+        return;
     }
 
     // all clear, move the piece
@@ -238,24 +353,12 @@ function move_left() {
     horizontalPosition--;
 }
 function move_right() {
-    //stop move_right if any block of the piece is at the right border
+    let nextPos = [];
     for(let i=0;i < 4;i++) {
-        let x = (currentPiece[rotation][i] + horizontalPosition).toString();
-        if(x[x.length - 1] === '9') { return; }
+        nextPos[i] = currentPiece[rotation][i] + verticalPosition + horizontalPosition + 1;
     }
-    // Checks for pre-existing blocks and prevents clipping
-    for(let i=0;i < 4;i++) {
-        if(gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition+1] !== "") {
-            let isClipping = true;
-            // if the block in check is the piece itself, then it's not clipping
-            for(let j=0;j < 4;j++) {
-                if( (currentPiece[rotation][i] + 1) === currentPiece[rotation][j] ) {
-                    isClipping = false;
-                    break;
-                }
-            }
-            if (isClipping) return; // if the piece will be clipping after movement
-        }
+    if(checkMoveCollision(nextPos)) {
+        return;
     }
 
     // all clear, move the piece
@@ -293,7 +396,7 @@ function hardDrop() {
     while(moveDown()) {}
 
     update();
-    spawnPiece();
+    placePiece();
 }
 
 
@@ -335,6 +438,11 @@ function setCurrentPiece(input) {
     }
 }
 
+function placePiece() {
+    lineClear();
+    spawnPiece();
+}
+
 function spawnPiece() {
     console.log("spawnPiece called, pieceBag: " + pieceBag);
     if(pieceBag.length < 7) {
@@ -371,6 +479,7 @@ function update() {
 }
 
 
+
 let lastUpdate = Date.now();
 let intervalTick = setInterval(tick, 16.6); // about 60 fps
 
@@ -389,6 +498,7 @@ let cwCd = false;
 let ccwCd = false;
 let r180Cd = false;
 
+// first spawn
 spawnPiece();
 
 function tick() {
@@ -485,8 +595,6 @@ function tick() {
     if(keyMap["c"]) {
         console.log("C");
     }
-
-
 
     update();
     render();
