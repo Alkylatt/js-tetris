@@ -7,15 +7,15 @@ console.log(gameSpace);
 
 // get elements on html page
 let counter_lineCleared = 0;
-const ui_lineCleared = document.querySelector('#ui_lineCleared');
-ui_lineCleared.innerHTML = "0";
+const UI_LINE_CLEARED = document.querySelector('#ui_lineCleared');
+UI_LINE_CLEARED.innerHTML = "0";
 
 // initialize game grid on html page
-const gridsContainer = document.querySelector('#gridsContainer');
+const GRIDS_CONTAINER = document.querySelector('#gridsContainer');
 // 2 extra out-of-bound lines for piece to spawn in,
 // 20 real lines for gameplay
 for(let i=0;i < 220;i++) {
-    let newDiv = gridsContainer.appendChild(document.createElement("div"));
+    let newDiv = GRIDS_CONTAINER.appendChild(document.createElement("div"));
     newDiv.classList.add("grid");
 }
 let grids = Array.from(document.querySelectorAll('#gridsContainer div'))
@@ -23,6 +23,41 @@ let grids = Array.from(document.querySelectorAll('#gridsContainer div'))
 document.addEventListener('DOMContentLoaded', () => {
     console.log(grids);
 })
+
+
+
+// get next pieces display
+const NEXT_PIECES = document.querySelector('#nextPieces');
+const NEXT_PIECES_DISPLAY = NEXT_PIECES.children;
+
+function updateNextPieces(next) {
+    NEXT_PIECES_DISPLAY[0].className = "next_" + next[pieceBag.length-2];
+    NEXT_PIECES_DISPLAY[1].className = "next_" + next[pieceBag.length-3];
+    NEXT_PIECES_DISPLAY[2].className = "next_" + next[pieceBag.length-4];
+    NEXT_PIECES_DISPLAY[3].className = "next_" + next[pieceBag.length-5];
+    NEXT_PIECES_DISPLAY[4].className = "next_" + next[pieceBag.length-6];
+}
+
+
+
+// get hold piece display
+const HOLD_PIECE = document.querySelector('#holdPiece').children;
+let holdingPiece = [''];
+
+function holdPiece() {
+    if(holdingPiece[0] === '') {
+        holdingPiece[0] = pieceBag[pieceBag.length-1];
+    }else { // switch holding piece and last piece from bag
+        let pieceTemp = holdingPiece[0];
+        holdingPiece[0] = pieceBag[pieceBag.length-1];
+        pieceBag = pieceBag.concat(pieceTemp);
+    }
+    holdingPiece[0] = currentColor.toUpperCase();
+    HOLD_PIECE[0].className = "next_" + holdingPiece;
+    clearCurrentRender();
+    spawnPiece();
+    holdCd = true;
+}
 
 
 
@@ -60,7 +95,7 @@ function lineClear() {
 
     // update line clear counter
     counter_lineCleared += linesToClear.length;
-    ui_lineCleared.innerHTML = counter_lineCleared.toString();
+    UI_LINE_CLEARED.innerHTML = counter_lineCleared.toString();
 }
 
 
@@ -400,13 +435,14 @@ function hardDrop() {
 }
 
 
-const pieceZ = [[0,1,11,12], [2,11,12,21], [10,11,21,22], [1,10,11,20]];
-const pieceS = [[1,2,10,11], [1,11,12,22], [11,12,20,21], [0,10,11,21]];
-const pieceL = [[2,10,11,12], [1,11,21,22], [10,11,12,20], [0,1,11,21]];
-const pieceJ = [[0,10,11,12], [1,2,11,21], [10,11,12,22], [1,11,20,21]];
-const pieceI = [[10,11,12,13], [2,12,22,32], [20,21,22,23], [1,11,21,31]];
-const pieceT = [[1,10,11,12], [1,11,12,21], [10,11,12,21], [1,10,11,21]];
-const pieceO = [[1,2,11,12], [1,2,11,12], [1,2,11,12], [1,2,11,12]];
+
+const PIECE_Z = [[0,1,11,12], [2,11,12,21], [10,11,21,22], [1,10,11,20]];
+const PIECE_S = [[1,2,10,11], [1,11,12,22], [11,12,20,21], [0,10,11,21]];
+const PIECE_L = [[2,10,11,12], [1,11,21,22], [10,11,12,20], [0,1,11,21]];
+const PIECE_J = [[0,10,11,12], [1,2,11,21], [10,11,12,22], [1,11,20,21]];
+const PIECE_I = [[10,11,12,13], [2,12,22,32], [20,21,22,23], [1,11,21,31]];
+const PIECE_T = [[1,10,11,12], [1,11,12,21], [10,11,12,21], [1,10,11,21]];
+const PIECE_O = [[1,2,11,12], [1,2,11,12], [1,2,11,12], [1,2,11,12]];
 
 
 let currentPiece;
@@ -415,25 +451,25 @@ function setCurrentPiece(input) {
     currentColor = input.toLowerCase();
     switch(input) {
         case "Z":
-            currentPiece = pieceZ;
+            currentPiece = PIECE_Z;
             break;
         case "S":
-            currentPiece = pieceS;
+            currentPiece = PIECE_S;
             break;
         case "L":
-            currentPiece = pieceL;
+            currentPiece = PIECE_L;
             break;
         case "J":
-            currentPiece = pieceJ;
+            currentPiece = PIECE_J;
             break;
         case "I":
-            currentPiece = pieceI;
+            currentPiece = PIECE_I;
             break;
         case "T":
-            currentPiece = pieceT;
+            currentPiece = PIECE_T;
             break;
         case "O":
-            currentPiece = pieceO;
+            currentPiece = PIECE_O;
             break;
     }
 }
@@ -448,6 +484,7 @@ function spawnPiece() {
     if(pieceBag.length < 7) {
         generateBag();
     }
+    updateNextPieces(pieceBag);
 
     horizontalPosition = 3;
     verticalPosition = 0;
@@ -463,6 +500,8 @@ function spawnPiece() {
             document.getElementById("gameOverPopup").style.display = "block";
         }
     }
+
+    holdCd = false;
 }
 
 
@@ -487,16 +526,20 @@ let gravity = 1000; // move down every ? ms
 let gravityTimer = 0;
 
 let das = 8; // [frames]
-let dasTimer = das;
+let dasTimer_left = das;
+let dasTimer_right = das;
 
 let arr = 0; // [frames]
-let arrTimer = arr;
+let arrTimer_left = arr;
+let arrTimer_right = arr;
 
 let hardDropCd = false; // to prevent unintended hard-drop spam
 // rotate cool-downs
 let cwCd = false;
 let ccwCd = false;
 let r180Cd = false;
+// hold piece cool-down
+let holdCd = false;
 
 // first spawn
 spawnPiece();
@@ -521,49 +564,52 @@ function tick() {
 
     // L/R movement
     if(keyMap["ArrowLeft"] && !keyMap["ArrowRight"]) {
-        if(dasTimer === das) {
+        if(dasTimer_left === das) {
             move_left();
-            dasTimer--;
-        }else if(dasTimer > 0) {
-            dasTimer--;
+            dasTimer_left--;
+        }else if(dasTimer_left > 0) {
+            dasTimer_left--;
         }else {
             if (arr === 0) { // if arr is 0 frames then teleport the piece to the border
                 for(let i=0;i < 9;i++) {
                     move_left();
                 }
             } else { // if arr is not 0, then use the arrTimer
-                if (arrTimer <= 0) {
+                if (arrTimer_left <= 0) {
                     move_left();
-                    arrTimer = arr;
+                    arrTimer_left = arr;
                 } else {
-                    arrTimer--;
+                    arrTimer_left--;
                 }
             }
         }
     }
     if(keyMap["ArrowRight"] && !keyMap["ArrowLeft"]) {
-        if(dasTimer === das) {
+        if(dasTimer_right === das) {
             move_right();
-            dasTimer--;
-        }else if(dasTimer > 0) {
-            dasTimer--;
+            dasTimer_right--;
+        }else if(dasTimer_right > 0) {
+            dasTimer_right--;
         }else {
             if (arr === 0) { // if arr is 0 frames then teleport the piece to the border
                 for(let i=0;i < 9;i++) {
                     move_right();
                 }
             } else { // if arr is not 0, then use the arrTimer
-                if (arrTimer <= 0) {
+                if (arrTimer_right <= 0) {
                     move_right();
-                    arrTimer = arr;
+                    arrTimer_right = arr;
                 } else {
-                    arrTimer--;
+                    arrTimer_left--;
                 }
             }
         }
     }
-    if(!keyMap["ArrowLeft"] && !keyMap["ArrowRight"] && dasTimer !== das) {
-        dasTimer = das;
+    if(!keyMap["ArrowLeft"]) {
+        dasTimer_left = das;
+    }
+    if(!keyMap["ArrowRight"]) {
+        dasTimer_right = das;
     }
 
     if(keyMap[" "]) {
@@ -593,7 +639,10 @@ function tick() {
     }
 
     if(keyMap["c"]) {
-        console.log("C");
+        if(!holdCd) {
+            // holdCd = true; // this is done in holdPiece() function
+            holdPiece();
+        }
     }
 
     update();
