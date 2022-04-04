@@ -1,7 +1,6 @@
 // initialize internal game grid array
-let gameSpace = [''];
+let gameSpace = ['']; // this is the current game state (important data for multiplayer); lowercase letter means solidified blocks, uppercase letter means moving piece
 while(gameSpace.length < 220) { gameSpace.push(''); }
-console.log(gameSpace);
 
 
 
@@ -9,6 +8,16 @@ console.log(gameSpace);
 let counter_lineCleared = 0;
 const UI_LINE_CLEARED = document.querySelector('#ui_lineCleared');
 UI_LINE_CLEARED.innerHTML = "0";
+
+let counter_tSpin = 0;
+const UI_T_SPIN = document.querySelector('#ui_tSpin');
+UI_T_SPIN.innerHTML = "0";
+
+let counter_quad = 0;
+const UI_QUAD = document.querySelector('#ui_quad');
+UI_QUAD.innerHTML = "0";
+
+
 
 // initialize game grid on html page
 const GRIDS_CONTAINER = document.querySelector('#gridsContainer');
@@ -18,11 +27,12 @@ for(let i=0;i < 220;i++) {
     let newDiv = GRIDS_CONTAINER.appendChild(document.createElement("div"));
     newDiv.classList.add("grid");
 }
-let grids = Array.from(document.querySelectorAll('#gridsContainer div'))
+let grids = Array.from(document.querySelectorAll('#gridsContainer div')) // this is just for rendering
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log(grids);
-})
+// document.addEventListener('DOMContentLoaded', () => {
+//     console.log(gameSpace);
+//     console.log(grids);
+// })
 
 
 
@@ -61,6 +71,29 @@ function holdPiece() {
 
 
 
+function checkTspin() {
+    // this function is called after spins/kicks, to check if t-spin condition is met
+    if(currentColor !== 't') {
+        isTspin = false;
+        return false;
+    }
+    if(isTspin) return isTspin; // isT-spin is true when it's the 5th condition thing (extra condition)
+    let check = [
+        gameSpace[horizontalPosition + verticalPosition] !== '',
+        gameSpace[horizontalPosition + verticalPosition + 2] !== '',
+        gameSpace[horizontalPosition + verticalPosition + 20] !== '',
+        gameSpace[horizontalPosition + verticalPosition + 22] !== ''
+    ];
+    // one of these occupied: top left, top right
+    // both of these occupied: bottom left, bottom right
+    if((check[0] || check[1]) && check[2] && check[3]) {
+        isTspin = true;
+        return true;
+    }else {
+        return false;
+    }
+}
+
 function lineClear() {
     let linesToClear = [];
     // check for lines cleared from bottom to top
@@ -77,10 +110,8 @@ function lineClear() {
         }
     }
 
-    console.log(linesToClear);
     // go through every element in linesToClear
     for(let i=0;i < linesToClear.length;i++) {
-        console.log(i);
         // clear the line
         for(let j=linesToClear[i]*10 + 10*i;j < linesToClear[i]*10 + 10*i + 10;j++) {
             gameSpace[j] = "";
@@ -93,16 +124,26 @@ function lineClear() {
         }
     }
 
+    if(linesToClear.length > 0 && checkTspin()) {
+        // update line clear counter
+        counter_tSpin++;
+        UI_T_SPIN.innerHTML = counter_tSpin.toString();
+    }
+    if(linesToClear.length === 4) {
+        counter_quad++;
+        UI_QUAD.innerHTML = counter_quad.toString();
+    }
+
     // update line clear counter
     counter_lineCleared += linesToClear.length;
     UI_LINE_CLEARED.innerHTML = counter_lineCleared.toString();
 }
-
+let t = 0; // debug
 
 
 function render() {
     for(let i=0; i < 220 ;i++) {
-        switch(gameSpace[i]) {
+        switch(gameSpace[i].toLowerCase()) {
             case "z":
                 grids[i].className = "grid colorZ";
                 break;
@@ -133,6 +174,8 @@ function render() {
                 break;
         }
     }
+
+    castShadow();
 }
 
 
@@ -161,17 +204,12 @@ function clearCurrentRender() {
 
 function checkRotateCollision(rotationNext) {
     // Checks for pre-existing blocks and prevents clipping
-    for(let i=0;i < 4;i++) {
-        if(gameSpace[currentPiece[rotationNext][i] + verticalPosition + horizontalPosition] !== "") {
-            let isClipping = true;
-            // if the block in check is the piece itself, then it's not clipping
-            for (let j = 0; j < 4; j++) {
-                if ((currentPiece[rotationNext][i]) === currentPiece[rotation][j]) {
-                    isClipping = false;
-                    break;
-                }
-            }
-            if (isClipping) return true; // if the piece will be clipping after movement
+    // collision detection
+    let check = [null,null,null,null];
+    for(let i=0;i < 4;i++) check[i] = gameSpace[currentPiece[rotationNext][i] + verticalPosition + horizontalPosition];
+    for (let i = 0;i < 4;i++) {
+        if ('a' <= check[i] && check[i] <= 'z') { // lowercase means placed block (and uppercase means current piece)
+            return true; // if the piece will be clipping after movement
         }
     }
 
@@ -203,17 +241,12 @@ function checkMoveCollision(nextPos) {
     }
 
     // Checks for pre-existing blocks and prevents clipping
-    for(let i=0;i < 4;i++) {
-        if(gameSpace[nextPos[i]] !== "") {
-            let isClipping = true;
-            // if the block in check is the piece itself, then it's not clipping
-            for (let j = 0; j < 4; j++) {
-                if (nextPos[i] === currentPiece[rotation][j] + horizontalPosition + verticalPosition) {
-                    isClipping = false;
-                    break;
-                }
-            }
-            if (isClipping) return true; // if the piece will be clipping after movement
+    // collision detection
+    let check = [null,null,null,null];
+    for(let i=0;i < 4;i++) check[i] = gameSpace[nextPos[i]];
+    for (let i = 0;i < 4;i++) {
+        if ('a' <= check[i] && check[i] <= 'z') { // lowercase means placed block (and uppercase means current piece)
+            return true; // if the piece will be clipping after movement
         }
     }
 
@@ -258,6 +291,7 @@ const srsTable = [
     [1, -2, 21, -12], // 3-0
     [-1, 2, -21, 12] // 0-3
 ];
+let isTspin = false;
 // This is where the SRS kicks happens
 function srsKick(nextRotation) {
     let tryTable = [0, 0, 0, 0];
@@ -328,8 +362,9 @@ function srsKick(nextRotation) {
             rotation = nextRotation;
             verticalPosition = Math.floor(nextCoordinate[test] / 10) * 10;
             horizontalPosition = nextCoordinate[test] % 10;
-            console.log("kick");
 
+            if(currentColor === "t" && test === 3) {isTspin = true;} // this is an extra condition for spin to be t-spin (5th kick condition)
+            checkTspin();
             return true; // if the kick succeeded, then move the piece, and return true
         }
     }
@@ -350,6 +385,7 @@ function rotate_cw() {
     // all clear, move the piece
     clearCurrentRender();
     rotation = rotationNext;
+    checkTspin();
 }
 function rotate_ccw() {
     let rotationNext = rotation;
@@ -363,6 +399,7 @@ function rotate_ccw() {
 
     clearCurrentRender();
     rotation = rotationNext;
+    checkTspin();
 }
 function rotate_180() {
     let rotationNext = (rotation + 2) % 4;
@@ -409,20 +446,15 @@ function moveDown() {
         }
     }
     // collision detection
-    for(let i=0;i < 4;i++) {
-        if(gameSpace[currentPiece[rotation][i] + verticalPosition+10 + horizontalPosition] !== "") {
-            let isClipping = true;
-            // if the block in check is the piece itself, then it's not clipping
-            for(let j=0;j < 4;j++) {
-                if( (currentPiece[rotation][i] + 10) === currentPiece[rotation][j] ) {
-                    isClipping = false;
-                    break;
-                }
-            }
-            if (isClipping) { return false } // if the piece will be clipping after movement
+    let check = [null,null,null,null];
+    for(let i=0;i < 4;i++) check[i] = gameSpace[currentPiece[rotation][i] + verticalPosition+10 + horizontalPosition];
+    for (let i = 0;i < 4;i++) {
+        if ('a' <= check[i] && check[i] <= 'z') { // lowercase means placed block (and uppercase means current piece)
+            return false;
         }
     }
 
+    if(currentColor === "t" && isTspin) {isTspin = false;}
     clearCurrentRender();
     verticalPosition += 10;
     return true;
@@ -432,6 +464,34 @@ function hardDrop() {
 
     update();
     placePiece();
+}
+function castShadow() {
+    let isClipping = false;
+    let shadow_offset = -10;
+    while(isClipping === false) {
+        shadow_offset += 10;
+        // at-the-bottom detection
+        for (let i = 0; i < 4; i++) {
+            if ( (currentPiece[rotation][i] + verticalPosition+shadow_offset + horizontalPosition) > 209) {
+                isClipping = true; // if any part of the piece is already at the bottom
+            }
+        }
+        if(isClipping) break;
+
+        // collision detection
+        let check = [null,null,null,null];
+        for(let i=0;i < 4;i++) check[i] = gameSpace[currentPiece[rotation][i] + verticalPosition+shadow_offset+10 + horizontalPosition];
+        for (let i = 0;i < 4;i++) {
+            if ('a' <= check[i] && check[i] <= 'z') { // lowercase means placed block (and uppercase means current piece)
+                isClipping = true;
+            }
+        }
+    }
+
+    for(let i=0;i < 4;i++) {
+        if(grids[currentPiece[rotation][i] + verticalPosition+shadow_offset + horizontalPosition].className === "grid")
+            grids[currentPiece[rotation][i] + verticalPosition+shadow_offset + horizontalPosition].className = "grid shadow";
+    }
 }
 
 
@@ -475,12 +535,13 @@ function setCurrentPiece(input) {
 }
 
 function placePiece() {
+    for(let i=0;i < 4;i++) { gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition] = currentColor; }
     lineClear();
     spawnPiece();
 }
 
 function spawnPiece() {
-    console.log("spawnPiece called, pieceBag: " + pieceBag);
+    // console.log("spawnPiece called, pieceBag: " + pieceBag);
     if(pieceBag.length < 7) {
         generateBag();
     }
@@ -514,7 +575,7 @@ let verticalPosition = -10; // always 10's multiple
 // This updates the grid class and thus game board color
 function update() {
     for(let i=0;i < 4;i++) { gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition] = ""; }
-    for(let i=0;i < 4;i++) { gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition] = currentColor; }
+    for(let i=0;i < 4;i++) { gameSpace[currentPiece[rotation][i] + verticalPosition + horizontalPosition] = currentColor.toUpperCase(); }
 }
 
 
